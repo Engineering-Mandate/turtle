@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TURTLE.EXE</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐢</text></svg>">
+<style>
+  :root {
+    --gray:    #c0c0c0;
+    --light:   #ffffff;
+    --dark:    #808080;
+    --darker:  #404040;
+    --black:   #000000;
+    --blue:    #000080;
+    --paper:   #fdf5e1;
+    --ink:     #3a2415;
+    --turtle:  #2d6b3f;
+    --turtle-line: #1f4a2c;
+    --kw:      #0000a0;
+    --num:     #800000;
+    --bracket: #800080;
+    --comment: #008000;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    padding: 14px;
+    background: #008080;
+    color: var(--black);
+    font-family: "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Geneva, sans-serif;
+    font-size: 12px;
+    min-height: 100vh;
+  }
+
+  /* ===== Window chrome ===== */
+  .window {
+    background: var(--gray);
+    border: 1px solid var(--black);
+    box-shadow:
+      inset 1px 1px 0 0 var(--light),
+      inset -1px -1px 0 0 var(--dark);
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  .title-bar {
+    background: var(--blue);
+    color: var(--light);
+    padding: 2px 3px;
+    margin: 2px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    font-size: 12px;
+  }
+  .title-bar-left { display: flex; align-items: center; gap: 4px; }
+  .sys-menu {
+    background: var(--gray);
+    border-style: solid;
+    border-width: 1px;
+    border-color: var(--light) var(--dark) var(--dark) var(--light);
+    width: 18px;
+    height: 16px;
+    padding: 0;
+    cursor: default;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .sys-menu::before {
+    content: "";
+    width: 10px;
+    height: 2px;
+    background: var(--black);
+  }
+  .title-bar-buttons { display: flex; gap: 0; }
+  .title-btn {
+    background: var(--gray);
+    border-style: solid;
+    border-width: 1px;
+    border-color: var(--light) var(--dark) var(--dark) var(--light);
+    width: 18px;
+    height: 16px;
+    font-size: 9px;
+    color: var(--black);
+    cursor: default;
+    padding: 0;
+    line-height: 0;
+  }
+  .menu-bar {
+    background: var(--gray);
+    padding: 2px 6px;
+    margin: 0 2px;
+    display: flex;
+    gap: 14px;
+    border-bottom: 1px solid var(--dark);
+    font-size: 12px;
+  }
+  .menu-item { cursor: default; padding: 1px 4px; }
+  .menu-item u { text-decoration: underline; }
+  .window-body {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* ===== Top row: canvas + sidebar ===== */
+  .top-row { display: flex; gap: 8px; }
+
+  .canvas-frame {
+    position: relative;
+    width: 580px;
+    height: 430px;
+    border-style: solid;
+    border-width: 2px;
+    border-color: var(--dark) var(--light) var(--light) var(--dark);
+    background: var(--paper);
+    flex-shrink: 0;
+  }
+  .canvas-frame canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+  }
+
+  .sidebar { flex: 1; min-width: 230px; display: flex; flex-direction: column; gap: 6px; }
+  .panel-title {
+    background: var(--gray);
+    font-weight: bold;
+    font-size: 11px;
+    padding: 2px 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .panel-inner {
+    background: var(--light);
+    border-style: solid;
+    border-width: 2px;
+    border-color: var(--dark) var(--light) var(--light) var(--dark);
+    padding: 6px 8px;
+  }
+  .cmd-list {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 10px;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .cmd-list dt {
+    font-family: "FixedSys", "Lucida Console", "Courier New", monospace;
+    color: var(--kw);
+    font-weight: bold;
+    white-space: nowrap;
+  }
+  .cmd-list dt i { color: var(--num); font-style: italic; font-weight: normal; }
+  .cmd-list dd { margin: 0; }
+  .preset-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+
+  /* ===== Editor ===== */
+  .editor {
+    display: flex;
+    height: 200px;
+    background: var(--light);
+    border-style: solid;
+    border-width: 2px;
+    border-color: var(--dark) var(--light) var(--light) var(--dark);
+    overflow: hidden;
+    font-family: "FixedSys", "Lucida Console", "Courier New", monospace;
+    font-size: 14px;
+    line-height: 18px;
+  }
+  .gutter {
+    background: var(--gray);
+    color: var(--darker);
+    padding: 4px 6px 4px 8px;
+    margin: 0;
+    text-align: right;
+    user-select: none;
+    border-right: 1px solid var(--dark);
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    overflow: hidden;
+    min-width: 38px;
+    white-space: pre;
+  }
+  .code-wrap { position: relative; flex: 1; overflow: hidden; }
+  .highlight, .input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 4px 6px;
+    border: 0;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: normal;
+    font-style: normal;
+    line-height: inherit;
+    letter-spacing: 0;
+    white-space: pre;
+    word-wrap: normal;
+    tab-size: 2;
+    -moz-tab-size: 2;
+  }
+  .highlight { color: var(--black); pointer-events: none; overflow: hidden; }
+  .input {
+    background: transparent;
+    color: transparent;
+    caret-color: var(--black);
+    resize: none;
+    outline: none;
+    overflow: auto;
+  }
+  .tk-kw      { color: var(--kw);      font-weight: bold; }
+  .tk-num     { color: var(--num); }
+  .tk-bracket { color: var(--bracket); font-weight: bold; }
+  .tk-comment { color: var(--comment); font-style: italic; }
+  .tk-ident   { color: var(--black); }
+
+  /* ===== Buttons & controls ===== */
+  .button-row { display: flex; gap: 6px; align-items: center; padding: 2px 0; }
+  .win-btn {
+    background: var(--gray);
+    border-style: solid;
+    border-width: 2px;
+    border-color: var(--light) var(--dark) var(--dark) var(--light);
+    padding: 4px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--black);
+    cursor: pointer;
+    min-width: 72px;
+  }
+  .win-btn u { text-decoration: underline; }
+  .win-btn:active:not(:disabled) {
+    border-color: var(--dark) var(--light) var(--light) var(--dark);
+    padding: 5px 13px 3px 15px;
+  }
+  .win-btn:focus { outline: 1px dotted var(--black); outline-offset: -4px; }
+  .win-btn:disabled { color: var(--dark); cursor: not-allowed; }
+  .win-btn.primary { font-weight: bold; }
+  .preset-grid .win-btn {
+    min-width: 0;
+    padding: 2px 4px;
+    font-size: 11px;
+  }
+  .preset-grid .win-btn:active:not(:disabled) { padding: 3px 3px 1px 5px; }
+  .speed-control {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .speed-control input[type="range"] {
+    width: 130px;
+    accent-color: var(--blue);
+  }
+
+  /* ===== Status bar ===== */
+  .status-bar {
+    background: var(--gray);
+    margin: 2px;
+    padding: 0;
+    display: flex;
+    gap: 0;
+    border-top: 1px solid var(--light);
+  }
+  .status-cell {
+    background: var(--gray);
+    border-style: solid;
+    border-width: 1px;
+    border-color: var(--dark) var(--light) var(--light) var(--dark);
+    padding: 2px 8px;
+    font-size: 11px;
+    font-family: "FixedSys", "Lucida Console", "Courier New", monospace;
+    min-width: 70px;
+  }
+  .status-cell.text {
+    font-family: "MS Sans Serif", "Microsoft Sans Serif", Tahoma, sans-serif;
+    flex: 1;
+  }
+</style>
+</head>
+<body>
+<div class="window">
+  <div class="title-bar">
+    <div class="title-bar-left">
+      <button class="sys-menu" aria-label="System menu" tabindex="-1"></button>
+      <span class="title">TURTLE.EXE - Untitled</span>
+    </div>
+    <div class="title-bar-buttons">
+      <button class="title-btn" aria-label="Minimize" tabindex="-1">▼</button>
+      <button class="title-btn" aria-label="Maximize" tabindex="-1">▲</button>
+    </div>
+  </div>
+  <div class="menu-bar">
+    <span class="menu-item"><u>F</u>ile</span>
+    <span class="menu-item"><u>E</u>dit</span>
+    <span class="menu-item"><u>R</u>un</span>
+    <span class="menu-item"><u>H</u>elp</span>
+  </div>
+  <div class="window-body">
+    <div class="top-row">
+      <div class="canvas-frame">
+        <canvas id="trail" width="580" height="430"></canvas>
+        <canvas id="turtle" width="580" height="430"></canvas>
+      </div>
+      <div class="sidebar">
+        <div class="panel-title">Commands</div>
+        <div class="panel-inner">
+          <dl class="cmd-list">
+            <dt>fd <i>n</i></dt>          <dd>Forward</dd>
+            <dt>bk <i>n</i></dt>          <dd>Back</dd>
+            <dt>rt <i>d</i></dt>          <dd>Right turn</dd>
+            <dt>lt <i>d</i></dt>          <dd>Left turn</dd>
+            <dt>pu</dt>                   <dd>Pen up</dd>
+            <dt>pd</dt>                   <dd>Pen down</dd>
+            <dt>home</dt>                 <dd>Centre</dd>
+            <dt>cs</dt>                   <dd>Clear screen</dd>
+            <dt>setpc <i>c</i></dt>       <dd>Pen colour</dd>
+            <dt>setpw <i>n</i></dt>       <dd>Pen width</dd>
+            <dt>repeat <i>n</i> [..]</dt> <dd>Loop block</dd>
+          </dl>
+        </div>
+        <div class="panel-title">Presets</div>
+        <div class="panel-inner">
+          <div class="preset-grid">
+            <button class="win-btn" data-preset="repeat 4 [fd 120 rt 90]">Square</button>
+            <button class="win-btn" data-preset="repeat 3 [fd 150 rt 120]">Triangle</button>
+            <button class="win-btn" data-preset="repeat 5 [fd 180 rt 144]">Star</button>
+            <button class="win-btn" data-preset="repeat 36 [&#10;  repeat 4 [fd 50 rt 90]&#10;  rt 10&#10;]">Flower</button>
+            <button class="win-btn" data-preset="repeat 8 [&#10;  repeat 90 [fd 2 rt 2]&#10;  rt 45&#10;]">Petals</button>
+            <button class="win-btn" data-preset="repeat 18 [fd 100 bk 100 rt 20]">Sunburst</button>
+          </div>
+        </div>
+        <div class="panel-title">Keys</div>
+        <div class="panel-inner" style="font-size:11px; line-height:1.5;">
+          <div><b>Ctrl+Enter</b> &mdash; run</div>
+          <div><b>Alt+R</b> / <b>Alt+S</b> / <b>Alt+C</b></div>
+          <div><b>Tab</b> &mdash; indent &nbsp; <b>Shift+Tab</b> &mdash; outdent</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="panel-title">Program</div>
+      <div class="editor">
+        <pre class="gutter" id="gutter">1</pre>
+        <div class="code-wrap">
+          <pre class="highlight" id="highlight" aria-hidden="true"></pre>
+          <textarea class="input" id="program" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off">repeat 36 [
+  repeat 4 [fd 50 rt 90]
+  rt 10
+]</textarea>
+        </div>
+      </div>
+    </div>
+    <div class="button-row">
+      <button class="win-btn primary" id="run"><u>R</u>un</button>
+      <button class="win-btn" id="stop"><u>S</u>top</button>
+      <button class="win-btn" id="clear"><u>C</u>lear</button>
+      <div class="speed-control">
+        Speed: <input type="range" id="speed" min="0" max="100" value="60">
+      </div>
+    </div>
+  </div>
+  <div class="status-bar">
+    <span class="status-cell text" id="status">Ready</span>
+    <span class="status-cell">x: <span id="status-x">0</span></span>
+    <span class="status-cell">y: <span id="status-y">0</span></span>
+    <span class="status-cell">hdg: <span id="status-h">0</span>&deg;</span>
+  </div>
+</div>
+<script>
+(() => {
+  // ===== DOM refs =====
+  const trailCanvas  = document.getElementById('trail');
+  const turtleCanvas = document.getElementById('turtle');
+  const trail        = trailCanvas.getContext('2d');
+  const turtleCtx    = turtleCanvas.getContext('2d');
+  const programEl    = document.getElementById('program');
+  const highlightEl  = document.getElementById('highlight');
+  const gutterEl     = document.getElementById('gutter');
+  const runBtn       = document.getElementById('run');
+  const stopBtn      = document.getElementById('stop');
+  const clearBtn     = document.getElementById('clear');
+  const speedEl      = document.getElementById('speed');
+  const statusEl     = document.getElementById('status');
+  const statusXEl    = document.getElementById('status-x');
+  const statusYEl    = document.getElementById('status-y');
+  const statusHEl    = document.getElementById('status-h');
+
+  const W = trailCanvas.width;
+  const H = trailCanvas.height;
+  const INK = '#3a2415';
+  const PAPER = '#fdf5e1';
+  const TURTLE = '#2d6b3f';
+  const TURTLE_LINE = '#1f4a2c';
+
+  const state = {
+    x: W / 2, y: H / 2,
+    heading: -90,
+    penDown: true,
+    penColor: INK,
+    penWidth: 2,
+  };
+
+  let stopRequested = false;
+  let running = false;
+
+  // ===== Drawing =====
+  function resetTurtle() {
+    state.x = W / 2; state.y = H / 2;
+    state.heading = -90;
+    state.penDown = true;
+    state.penColor = INK;
+    state.penWidth = 2;
+  }
+  function clearTrail() {
+    trail.fillStyle = PAPER;
+    trail.fillRect(0, 0, W, H);
+  }
+  function drawTurtle() {
+    turtleCtx.clearRect(0, 0, W, H);
+    const rad = state.heading * Math.PI / 180;
+    const size = 10;
+    turtleCtx.save();
+    turtleCtx.translate(state.x, state.y);
+    turtleCtx.rotate(rad);
+    turtleCtx.beginPath();
+    turtleCtx.moveTo(size, 0);
+    turtleCtx.lineTo(-size * 0.7, size * 0.7);
+    turtleCtx.lineTo(-size * 0.35, 0);
+    turtleCtx.lineTo(-size * 0.7, -size * 0.7);
+    turtleCtx.closePath();
+    turtleCtx.fillStyle = TURTLE;
+    turtleCtx.fill();
+    turtleCtx.strokeStyle = TURTLE_LINE;
+    turtleCtx.lineWidth = 1.5;
+    turtleCtx.lineJoin = 'round';
+    turtleCtx.stroke();
+    turtleCtx.restore();
+    updateStatusPos();
+  }
+  function updateStatusPos() {
+    statusXEl.textContent = Math.round(state.x - W / 2);
+    statusYEl.textContent = Math.round(-(state.y - H / 2));
+    let h = state.heading + 90;
+    h = ((h % 360) + 360) % 360;
+    statusHEl.textContent = Math.round(h);
+  }
+  function setStatus(s) { statusEl.textContent = s; }
+
+  // ===== Lexer / Parser =====
+  const KEYWORDS = new Set([
+    'fd','forward','bk','back','rt','right','lt','left',
+    'pu','penup','pd','pendown','home',
+    'cs','clear','clearscreen',
+    'setpc','setcolor','setpw','setwidth','repeat'
+  ]);
+
+  function tokenize(src) {
+    const stripped = src.split('\n').map(l => l.replace(/;.*$/, '')).join(' ');
+    return stripped.toLowerCase()
+      .replace(/\[/g, ' [ ')
+      .replace(/\]/g, ' ] ')
+      .split(/\s+/)
+      .filter(t => t.length > 0);
+  }
+
+  function parse(tokens) {
+    const ops = [];
+    let i = 0;
+    const expectNum = (cmd) => {
+      const t = tokens[i + 1];
+      const n = parseFloat(t);
+      if (isNaN(n)) throw new Error(`${cmd} expects a number, got "${t || 'end of input'}"`);
+      return n;
+    };
+    while (i < tokens.length) {
+      const t = tokens[i];
+      switch (t) {
+        case 'repeat': {
+          const n = parseInt(tokens[++i], 10);
+          if (isNaN(n)) throw new Error('repeat expects a count');
+          if (tokens[++i] !== '[') throw new Error('repeat expects [');
+          let depth = 1, j = i + 1;
+          while (j < tokens.length && depth > 0) {
+            if (tokens[j] === '[') depth++;
+            else if (tokens[j] === ']') depth--;
+            if (depth > 0) j++;
+          }
+          if (depth !== 0) throw new Error('unmatched [');
+          ops.push({ type: 'repeat', n, body: parse(tokens.slice(i + 1, j)) });
+          i = j + 1; break;
+        }
+        case 'fd': case 'forward':
+          ops.push({ type: 'move', n: expectNum('fd') }); i += 2; break;
+        case 'bk': case 'back':
+          ops.push({ type: 'move', n: -expectNum('bk') }); i += 2; break;
+        case 'rt': case 'right':
+          ops.push({ type: 'turn', n: expectNum('rt') }); i += 2; break;
+        case 'lt': case 'left':
+          ops.push({ type: 'turn', n: -expectNum('lt') }); i += 2; break;
+        case 'pu': case 'penup':   ops.push({ type: 'pen', down: false }); i++; break;
+        case 'pd': case 'pendown': ops.push({ type: 'pen', down: true });  i++; break;
+        case 'home': ops.push({ type: 'home' }); i++; break;
+        case 'cs': case 'clear': case 'clearscreen':
+          ops.push({ type: 'cs' }); i++; break;
+        case 'setpc': case 'setcolor':
+          ops.push({ type: 'color', value: tokens[++i] }); i++; break;
+        case 'setpw': case 'setwidth':
+          ops.push({ type: 'width', value: expectNum('setpw') }); i += 2; break;
+        default:
+          throw new Error(`unknown command: ${t}`);
+      }
+    }
+    return ops;
+  }
+
+  // ===== Animation =====
+  function speedFactor() {
+    const v = parseInt(speedEl.value, 10);
+    return Math.max(0.01, 1 - v / 100);
+  }
+  function animateMove(distance) {
+    return new Promise(resolve => {
+      const startX = state.x, startY = state.y;
+      const rad = state.heading * Math.PI / 180;
+      const dx = Math.cos(rad) * distance;
+      const dy = Math.sin(rad) * distance;
+      const targetX = startX + dx, targetY = startY + dy;
+      const baseDuration = Math.min(900, Math.max(40, Math.abs(distance) * 5));
+      const duration = baseDuration * speedFactor();
+      if (duration < 16) {
+        if (state.penDown) {
+          trail.beginPath();
+          trail.moveTo(startX, startY);
+          trail.lineTo(targetX, targetY);
+          trail.strokeStyle = state.penColor;
+          trail.lineWidth = state.penWidth;
+          trail.lineCap = 'round';
+          trail.stroke();
+        }
+        state.x = targetX; state.y = targetY;
+        drawTurtle();
+        resolve();
+        return;
+      }
+      const start = performance.now();
+      let lastX = startX, lastY = startY;
+      const step = (now) => {
+        if (stopRequested) { resolve(); return; }
+        const t = Math.min(1, (now - start) / duration);
+        const nx = startX + dx * t, ny = startY + dy * t;
+        if (state.penDown) {
+          trail.beginPath();
+          trail.moveTo(lastX, lastY);
+          trail.lineTo(nx, ny);
+          trail.strokeStyle = state.penColor;
+          trail.lineWidth = state.penWidth;
+          trail.lineCap = 'round';
+          trail.stroke();
+        }
+        lastX = nx; lastY = ny;
+        state.x = nx; state.y = ny;
+        drawTurtle();
+        if (t < 1) requestAnimationFrame(step); else resolve();
+      };
+      requestAnimationFrame(step);
+    });
+  }
+  function animateTurn(degrees) {
+    return new Promise(resolve => {
+      const startHeading = state.heading;
+      const duration = Math.min(350, Math.max(20, Math.abs(degrees) * 2)) * speedFactor();
+      if (duration < 16) {
+        state.heading = startHeading + degrees;
+        drawTurtle();
+        resolve();
+        return;
+      }
+      const start = performance.now();
+      const step = (now) => {
+        if (stopRequested) { resolve(); return; }
+        const t = Math.min(1, (now - start) / duration);
+        state.heading = startHeading + degrees * t;
+        drawTurtle();
+        if (t < 1) requestAnimationFrame(step); else resolve();
+      };
+      requestAnimationFrame(step);
+    });
+  }
+  async function execute(ops) {
+    for (const op of ops) {
+      if (stopRequested) return;
+      switch (op.type) {
+        case 'move': await animateMove(op.n); break;
+        case 'turn': await animateTurn(op.n); break;
+        case 'pen':  state.penDown = op.down; break;
+        case 'home':
+          state.x = W / 2; state.y = H / 2; state.heading = -90;
+          drawTurtle(); break;
+        case 'cs':
+          clearTrail(); drawTurtle(); break;
+        case 'color': state.penColor = op.value; break;
+        case 'width': state.penWidth = op.value; break;
+        case 'repeat':
+          for (let i = 0; i < op.n; i++) {
+            if (stopRequested) return;
+            await execute(op.body);
+          }
+          break;
+      }
+    }
+  }
+
+  // ===== Run / Stop / Clear =====
+  async function run() {
+    if (running) return;
+    stopRequested = false;
+    let ops;
+    try {
+      ops = parse(tokenize(programEl.value));
+    } catch (e) {
+      setStatus('Error: ' + e.message);
+      return;
+    }
+    running = true;
+    runBtn.disabled = true;
+    setStatus('Running...');
+    try {
+      await execute(ops);
+      setStatus(stopRequested ? 'Stopped' : 'Done');
+    } catch (e) {
+      setStatus('Runtime error: ' + e.message);
+    } finally {
+      running = false;
+      runBtn.disabled = false;
+    }
+  }
+  function stop() { stopRequested = true; }
+  function clearAll() {
+    stopRequested = true;
+    clearTrail();
+    resetTurtle();
+    drawTurtle();
+    setStatus('Ready');
+  }
+
+  runBtn.addEventListener('click', run);
+  stopBtn.addEventListener('click', stop);
+  clearBtn.addEventListener('click', clearAll);
+
+  // ===== Presets =====
+  document.querySelectorAll('.preset-grid .win-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      programEl.value = btn.dataset.preset;
+      updateEditor();
+      programEl.focus();
+    });
+  });
+
+  // ===== Syntax highlighting =====
+  function esc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function highlight(text) {
+    return text.split('\n').map(highlightLine).join('\n');
+  }
+  function highlightLine(line) {
+    const commentIdx = line.indexOf(';');
+    let code = line, comment = '';
+    if (commentIdx >= 0) {
+      code = line.substring(0, commentIdx);
+      comment = line.substring(commentIdx);
+    }
+    let out = '';
+    const tokenRe = /(\s+)|(\d+(?:\.\d+)?)|(\[|\])|(\w+)|([^\s\w\[\]]+)/g;
+    let m;
+    while ((m = tokenRe.exec(code)) !== null) {
+      const [, ws, num, br, word, other] = m;
+      if (ws !== undefined) out += esc(ws);
+      else if (num !== undefined) out += `<span class="tk-num">${esc(num)}</span>`;
+      else if (br !== undefined)  out += `<span class="tk-bracket">${esc(br)}</span>`;
+      else if (word !== undefined) {
+        if (KEYWORDS.has(word.toLowerCase()))
+          out += `<span class="tk-kw">${esc(word)}</span>`;
+        else
+          out += `<span class="tk-ident">${esc(word)}</span>`;
+      }
+      else if (other !== undefined) out += esc(other);
+    }
+    if (comment) out += `<span class="tk-comment">${esc(comment)}</span>`;
+    return out;
+  }
+  function updateGutter() {
+    const lines = programEl.value.split('\n').length;
+    let nums = '';
+    for (let i = 1; i <= lines; i++) nums += i + (i < lines ? '\n' : '');
+    gutterEl.textContent = nums;
+  }
+  function updateEditor() {
+    highlightEl.innerHTML = highlight(programEl.value) + '\n';
+    updateGutter();
+  }
+
+  programEl.addEventListener('input', updateEditor);
+  programEl.addEventListener('scroll', () => {
+    highlightEl.scrollTop = programEl.scrollTop;
+    highlightEl.scrollLeft = programEl.scrollLeft;
+    gutterEl.scrollTop = programEl.scrollTop;
+  });
+
+  // ===== Editor key handling: auto-indent on Enter, Tab/Shift+Tab, Ctrl+Enter to run =====
+  programEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      run();
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const start = programEl.selectionStart;
+      const end   = programEl.selectionEnd;
+      const value = programEl.value;
+      const before = value.substring(0, start);
+      const after  = value.substring(end);
+      // Indent depth = unclosed [ in 'before'
+      let depth = 0;
+      for (const ch of before) {
+        if (ch === '[') depth++;
+        else if (ch === ']') depth--;
+      }
+      depth = Math.max(0, depth);
+      const indent = '  '.repeat(depth);
+      const insert = '\n' + indent;
+      programEl.value = before + insert + after;
+      programEl.selectionStart = programEl.selectionEnd = start + insert.length;
+      updateEditor();
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = programEl.selectionStart;
+      const value = programEl.value;
+      if (e.shiftKey) {
+        const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+        const lineText = value.substring(lineStart, start);
+        if (lineText.startsWith('  ')) {
+          programEl.value = value.substring(0, lineStart) + value.substring(lineStart + 2);
+          programEl.selectionStart = programEl.selectionEnd = start - 2;
+          updateEditor();
+        }
+      } else {
+        programEl.value = value.substring(0, start) + '  ' + value.substring(programEl.selectionEnd);
+        programEl.selectionStart = programEl.selectionEnd = start + 2;
+        updateEditor();
+      }
+      return;
+    }
+  });
+
+  // ===== Global Alt+R/S/C shortcuts =====
+  document.addEventListener('keydown', (e) => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey) {
+      const k = e.key.toLowerCase();
+      if (k === 'r') { e.preventDefault(); run(); }
+      else if (k === 's') { e.preventDefault(); stop(); }
+      else if (k === 'c') { e.preventDefault(); clearAll(); }
+    }
+  });
+
+  // ===== Init =====
+  resetTurtle();
+  clearTrail();
+  drawTurtle();
+  updateEditor();
+})();
+</script>
+</body>
+</html>
